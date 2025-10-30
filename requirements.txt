@@ -1,3 +1,5 @@
 torch
 pywavelets
+matplotlib
 numpy
+torchinfo

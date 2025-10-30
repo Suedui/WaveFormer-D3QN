@@ -20,7 +20,7 @@ class Transition(NamedTuple):
     done: bool
 
 
-@dataclass
+@dataclass(slots=True)
 class AgentConfig:
     """Hyper-parameters controlling the D3QN agent."""
 
@@ -71,12 +71,8 @@ class WaveletSelectionAgent:
         self.config = config
         self.device = device or torch.device("cpu")
 
-        self.policy_net = DuelingQNetwork(config.state_dim, config.action_dim).to(
-            self.device
-        )
-        self.target_net = DuelingQNetwork(config.state_dim, config.action_dim).to(
-            self.device
-        )
+        self.policy_net = DuelingQNetwork(config.state_dim, config.action_dim).to(self.device)
+        self.target_net = DuelingQNetwork(config.state_dim, config.action_dim).to(self.device)
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
 
@@ -123,9 +119,7 @@ class WaveletSelectionAgent:
         states = torch.stack([transition.state for transition in batch]).to(self.device)
         actions = torch.tensor([transition.action for transition in batch], dtype=torch.long)
         rewards = torch.tensor([transition.reward for transition in batch], dtype=torch.float32)
-        next_states = torch.stack([transition.next_state for transition in batch]).to(
-            self.device
-        )
+        next_states = torch.stack([transition.next_state for transition in batch]).to(self.device)
         dones = torch.tensor([transition.done for transition in batch], dtype=torch.float32)
         return states, actions.to(self.device), rewards.to(self.device), next_states, dones.to(
             self.device
@@ -153,7 +147,6 @@ class WaveletSelectionAgent:
         nn.utils.clip_grad_norm_(self.policy_net.parameters(), max_norm=1.0)
         self.optimizer.step()
 
-        # Soft update of the target network.
         with torch.no_grad():
             for target_param, policy_param in zip(
                 self.target_net.parameters(), self.policy_net.parameters()
@@ -167,4 +160,3 @@ class WaveletSelectionAgent:
         """Return the indices of the available actions."""
 
         return range(self.config.action_dim)
-

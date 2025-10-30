@@ -1,19 +1,21 @@
-"""Dataset utilities for WaveFormer-D3QN."""
+"""Base dataset definitions shared across TFN1 datasets."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Optional, Sequence
 
 import numpy as np
 import torch
 from torch.utils.data import Dataset
 
+Transform = Optional[Callable[[torch.Tensor], torch.Tensor]]
 
-@dataclass
-class DatasetConfig:
-    """Configuration describing how the dataset is organised on disk."""
+
+@dataclass(slots=True)
+class DiskDatasetConfig:
+    """Configuration describing how a dataset is organised on disk."""
 
     root: Path
     signal_file: str = "signals.npy"
@@ -21,29 +23,32 @@ class DatasetConfig:
 
 
 class TimeSeriesDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
-    """A thin wrapper around NumPy arrays stored on disk.
+    """Generic time-series dataset backed by NumPy files.
 
-    The dataset expects two NumPy files located at ``root / signal_file`` and
-    ``root / target_file``. Each row in ``signals`` represents a sample in the
-    time domain. ``targets`` should either be a 1-D vector (for regression) or
-    a 2-D array with one-hot encoded labels.
+    Parameters
+    ----------
+    config:
+        Description of the file layout on disk.
+    transform:
+        Optional callable applied to each signal.
+    target_transform:
+        Optional callable applied to each target.
+    augmentations:
+        Sequence of callables that modify the signal in-place or return a new
+        tensor. The augmentations are applied in the order provided.
     """
 
     def __init__(
         self,
-        config: DatasetConfig,
-        transform: Optional[Callable[[torch.Tensor], torch.Tensor]] = None,
-        target_transform: Optional[Callable[[torch.Tensor], torch.Tensor]] = None,
+        config: DiskDatasetConfig,
+        transform: Transform = None,
+        target_transform: Transform = None,
+        augmentations: Optional[Sequence[Callable[[torch.Tensor], torch.Tensor]]] = None,
     ) -> None:
         self.config = config
         self.transform = transform
         self.target_transform = target_transform
-
-        if not config.root.exists():
-            raise FileNotFoundError(
-                "Dataset root does not exist. Please place your dataset at "
-                f"'{config.root}' before running training."
-            )
+        self.augmentations = augmentations or []
 
         signal_path = config.root / config.signal_file
         target_path = config.root / config.target_file
@@ -73,10 +78,12 @@ class TimeSeriesDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
         signal = self.signals[idx]
         target = self.targets[idx]
 
+        for augmentation in self.augmentations:
+            signal = augmentation(signal)
+
         if self.transform:
             signal = self.transform(signal)
         if self.target_transform:
             target = self.target_transform(target)
 
         return signal, target
-
