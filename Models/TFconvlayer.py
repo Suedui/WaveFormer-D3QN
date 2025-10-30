@@ -1,4 +1,4 @@
-"""Wavelet transform utilities for the TFN1 architecture."""
+"""Wavelet transform utilities for the WaveFormer-D3QN architecture."""
 
 from __future__ import annotations
 

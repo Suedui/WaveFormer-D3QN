@@ -1,6 +1,6 @@
-# TFN1
+# WaveFormer-D3QN
 
-TFN1 is a reference implementation of a transformer-enhanced fault diagnosis
+WaveFormer-D3QN is a reference implementation of a transformer-enhanced fault diagnosis
 pipeline. A discrete wavelet transform feeds a transformer encoder, while a
 Dueling Double Deep Q-Network (D3QN) agent adaptively selects the most suitable
 wavelet kernel for each batch, reducing the reliance on manual expert tuning.
@@ -8,7 +8,7 @@ wavelet kernel for each batch, reducing the reliance on manual expert tuning.
 ## Project structure
 
 ```
-TFN1/
+WaveFormer-D3QN/
 ├── main.py                 # Command line entry point
 ├── train.py                # Backwards-compatible wrapper around main.py
 ├── Datasets/               # Dataset definitions and augmentation helpers
@@ -20,8 +20,8 @@ TFN1/
 │           ├── CWRU_get_files.py
 │           └── generalfunction.py
 ├── Models/                 # Model components
-│   ├── BackboneCNN.py      # Transformer backbone
-│   ├── TFN.py              # High-level TFN model tying everything together
+│   ├── BackboneTransformer.py # Transformer backbone
+│   ├── WaveFormer.py       # High-level WaveFormer model tying everything together
 │   ├── TFconvlayer.py      # Wavelet transform utilities
 │   └── WaveletRLConv.py    # D3QN agent for kernel selection
 ├── PostProcess/            # Evaluation and visualisation helpers
@@ -50,7 +50,7 @@ pip install torch pywavelets matplotlib numpy torchinfo
 
 ## Preparing the dataset
 
-Place your dataset under a directory of your choice (default: `data/your-dataset`).
+Place your dataset under a directory of your choice (default: `C:/Users/刘明浩/PycharmProjects/WaveFormer-D3QN/Datasets/CWRU`).
 The loader expects two NumPy arrays:
 
 - `signals.npy`: shape `(num_samples, sequence_length)`
@@ -78,7 +78,7 @@ downstream prediction.
 
 ## Extending
 
-- Adjust the candidate wavelet kernels in `Models/TFN.TFNConfig.wavelet_kernels`.
+- Adjust the candidate wavelet kernels in `Models/WaveFormer.WaveFormerConfig.wavelet_kernels`.
 - Modify reward shaping logic in `utils/train_utils.compute_reward` to better
   match your task.
-- Swap in a custom Transformer head in `Models/BackboneCNN.py` as needed.
+- Swap in a custom Transformer head in `Models/BackboneTransformer.py` as needed.

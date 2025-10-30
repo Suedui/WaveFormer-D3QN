@@ -1,4 +1,4 @@
-"""High-level TFN model that marries wavelet features with a transformer backbone."""
+"""High-level WaveFormer model that marries wavelet features with a transformer backbone."""
 
 from __future__ import annotations
 
@@ -8,14 +8,14 @@ from typing import Iterable, List
 import torch
 from torch import nn
 
-from .BackboneCNN import TransformerBackbone
+from .BackboneTransformer import TransformerBackbone
 from .TFconvlayer import WaveletTransform, WaveletTransformConfig
 from .WaveletRLConv import AgentConfig, WaveletSelectionAgent
 
 
 @dataclass(slots=True)
-class TFNConfig:
-    """Configuration object for :class:`TFNModel`."""
+class WaveFormerConfig:
+    """Configuration object for :class:`WaveFormerModel`."""
 
     input_dim: int
     model_dim: int = 128
@@ -28,12 +28,12 @@ class TFNConfig:
     wavelet_level: int = 2
 
 
-class TFNModel(nn.Module):
+class WaveFormerModel(nn.Module):
     """Wavelet-aware transformer that relies on a D3QN agent for kernel selection."""
 
     def __init__(
         self,
-        model_config: TFNConfig,
+        model_config: WaveFormerConfig,
         agent_config: AgentConfig | None = None,
         device: torch.device | None = None,
     ) -> None:

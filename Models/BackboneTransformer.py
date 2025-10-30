@@ -1,4 +1,4 @@
-"""Transformer backbone used by the TFN model."""
+"""Transformer backbone used by the WaveFormer model."""
 
 from __future__ import annotations
 
