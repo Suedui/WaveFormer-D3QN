@@ -1,6 +1,6 @@
-"""Model components for the TFN1 architecture."""
+"""Model components for the WaveFormer-D3QN architecture."""
 
-from .TFN import TFNConfig, TFNModel
+from .WaveFormer import WaveFormerConfig, WaveFormerModel
 from .WaveletRLConv import AgentConfig, WaveletSelectionAgent
 
-__all__ = ["TFNConfig", "TFNModel", "AgentConfig", "WaveletSelectionAgent"]
+__all__ = ["WaveFormerConfig", "WaveFormerModel", "AgentConfig", "WaveletSelectionAgent"]

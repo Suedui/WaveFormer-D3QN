@@ -1,4 +1,4 @@
-"""Dataset loading utilities for the TFN1 project."""
+"""Dataset loading utilities for the WaveFormer-D3QN project."""
 
 from .CWRU import CWRUDataset, CWRUConfig
 

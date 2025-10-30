@@ -1,4 +1,4 @@
-"""Logging utilities for TFN1."""
+"""Logging utilities for WaveFormer-D3QN."""
 
 from __future__ import annotations
 

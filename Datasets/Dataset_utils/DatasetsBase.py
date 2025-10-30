@@ -1,4 +1,4 @@
-"""Base dataset definitions shared across TFN1 datasets."""
+"""Base dataset definitions shared across WaveFormer-D3QN datasets."""
 
 from __future__ import annotations
 

@@ -9,7 +9,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from Models.TFN import TFNModel
+from Models.WaveFormer import WaveFormerModel
 
 
 def build_state_features(batch: torch.Tensor) -> torch.Tensor:
@@ -29,7 +29,7 @@ def compute_reward(predictions: torch.Tensor, targets: torch.Tensor) -> float:
 
 
 def train_epoch(
-    model: TFNModel,
+    model: WaveFormerModel,
     dataloader: DataLoader[Tuple[torch.Tensor, torch.Tensor]],
     optimizer: torch.optim.Optimizer,
     device: torch.device,
