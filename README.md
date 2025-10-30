@@ -51,7 +51,9 @@ pip install torch pywavelets matplotlib numpy torchinfo
 ## Preparing the dataset
 
 Place your dataset under a directory of your choice (default: `C:/Users/刘明浩/PycharmProjects/WaveFormer-D3QN/Datasets/CWRU`).
-The loader expects two NumPy arrays:
+The loader now accepts either the original CWRU `.mat` files or pre-converted
+NumPy arrays. When `.mat` files are detected they are converted on-the-fly and
+cached as:
 
 - `signals.npy`: shape `(num_samples, sequence_length)`
 - `targets.npy`: shape `(num_samples,)` for regression or `(num_samples, target_dim)`
