@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Iterable, Tuple
 
+import warnings
+
 import numpy as np
 from scipy.io import loadmat
 
@@ -122,13 +124,16 @@ def _stack_signals(signals: Iterable[np.ndarray], mat_files: list[Path]) -> np.n
     """Validate that all signals share the same length and stack them."""
 
     signals_list = [np.asarray(signal, dtype=np.float32).ravel() for signal in signals]
-    lengths = {signal.shape[0] for signal in signals_list}
-    if len(lengths) != 1:
-        raise ValueError(
+    lengths = [signal.shape[0] for signal in signals_list]
+    min_length = min(lengths)
+    if len(set(lengths)) != 1:
+        warnings.warn(
             "Signals extracted from the provided .mat files do not all share the "
-            "same length. Please ensure the dataset is consistent or convert it "
-            "manually before training. Offending files include: "
-            + ", ".join(str(path) for path in mat_files)
+            "same length. They will be truncated to the shortest sequence to "
+            "enable batching.",
+            RuntimeWarning,
+            stacklevel=2,
         )
+        signals_list = [signal[:min_length] for signal in signals_list]
 
     return np.stack(signals_list, axis=0)
