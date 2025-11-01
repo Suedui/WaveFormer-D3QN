@@ -86,7 +86,18 @@ class WaveFormerModel(nn.Module):
         feature_tensor = torch.stack(processed_features).unsqueeze(1).to(batch.device)
         return self.backbone(feature_tensor)
 
-    def select_kernel(self, state: torch.Tensor) -> int:
-        """Delegate kernel selection to the D3QN agent."""
+    def select_kernel(self, state: torch.Tensor, *, explore: bool = True) -> int:
+        """Delegate kernel selection to the D3QN agent.
 
-        return self.agent.select_action(state)
+        Parameters
+        ----------
+        state:
+            The summary statistics describing the current batch of signals.
+        explore:
+            If ``True`` the epsilon-greedy policy is used. When ``False`` the
+            greedy action is selected without updating the agent state.
+        """
+
+        if explore:
+            return self.agent.select_action(state)
+        return self.agent.select_greedy_action(state)

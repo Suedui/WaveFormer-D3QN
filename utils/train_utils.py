@@ -103,7 +103,7 @@ def evaluate(
 
         labels = _prepare_class_labels(targets)
         state = build_state_features(signals)
-        kernel_idx = model.select_kernel(state)
+        kernel_idx = model.select_kernel(state, explore=False)
 
         predictions = model(signals, kernel_idx)
         loss = nn.functional.cross_entropy(predictions, labels)

@@ -100,6 +100,14 @@ class WaveletSelectionAgent:
             q_values = self.policy_net(state.unsqueeze(0))
             return int(torch.argmax(q_values, dim=-1).item())
 
+    def select_greedy_action(self, state: torch.Tensor) -> int:
+        """Select the action with the highest Q-value without exploration."""
+
+        with torch.no_grad():
+            state = state.to(self.device)
+            q_values = self.policy_net(state.unsqueeze(0))
+            return int(torch.argmax(q_values, dim=-1).item())
+
     def store_transition(
         self,
         state: torch.Tensor,
