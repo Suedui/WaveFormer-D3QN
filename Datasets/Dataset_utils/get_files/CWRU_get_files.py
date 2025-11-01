@@ -82,11 +82,28 @@ def _load_signal_from_mat(path: Path) -> np.ndarray:
     raise ValueError(f"Unable to locate a 1D signal array inside '{path}'.")
 
 
+def _label_from_root(root: Path) -> str:
+    """Create a deterministic label prefix based on ``root``."""
+
+    tail_components = list(root.parts)[-3:]
+    tokens = [_normalise(component) for component in tail_components]
+    tokens = [token for token in tokens if token]
+    if not tokens:
+        return "dataset"
+    return "_".join(tokens)
+
+
 def _derive_label(path: Path, root: Path) -> str:
     """Generate a stable class label from the dataset directory hierarchy."""
 
     parts = list(path.relative_to(root).parts)
-    dataset_group = _normalise(parts[0]) if parts else "dataset"
+    if len(parts) <= 1:
+        # ``root`` points directly to a directory containing ``.mat`` files.
+        # Use the directory context instead of the file name to avoid
+        # assigning a unique class to every sample in that folder.
+        return _label_from_root(root)
+
+    dataset_group = _normalise(parts[0])
     fault_type = None
     position = None
     severity = None

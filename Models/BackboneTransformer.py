@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
+
 import numpy as np
 import torch
 from torch import nn
+from torch.nn import functional as F
 
 
 class PositionalEncoding(nn.Module):
@@ -41,12 +44,15 @@ class TransformerBackbone(nn.Module):
         output_dim: int,
     ) -> None:
         super().__init__()
+        self.max_seq_len = max_seq_len
+        self._warned_truncation = False
         self.input_proj = nn.Linear(input_dim, model_dim)
+        self.input_dropout = nn.Dropout(dropout)
         self.pos_encoder = PositionalEncoding(model_dim, max_seq_len)
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=model_dim,
             nhead=num_heads,
-            dim_feedforward=model_dim * 4,
+            dim_feedforward=max(model_dim * 2, 128),
             dropout=dropout,
             batch_first=True,
         )
@@ -55,7 +61,35 @@ class TransformerBackbone(nn.Module):
         self.head = nn.Linear(model_dim, output_dim)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:  # type: ignore[override]
+        seq_len = x.size(1)
+        if seq_len > self.max_seq_len:
+            if not self._warned_truncation:
+                logging.getLogger(__name__).warning(
+                    "Input sequence length %d exceeds max_seq_len %d; "
+                    "downsampling before transformer encoding.",
+                    seq_len,
+                    self.max_seq_len,
+                )
+                self._warned_truncation = True
+            # ``F.interpolate`` expects channels-first layout for 1-D signals.
+            x = x.transpose(1, 2)
+            if seq_len > 1:
+                x = F.interpolate(
+                    x,
+                    size=self.max_seq_len,
+                    mode="linear",
+                    align_corners=False,
+                )
+            else:
+                x = F.interpolate(
+                    x,
+                    size=self.max_seq_len,
+                    mode="nearest",
+                )
+            x = x.transpose(1, 2)
+
         x = self.input_proj(x)
+        x = self.input_dropout(x)
         x = self.pos_encoder(x)
         encoded = self.transformer(x)
         pooled = encoded.mean(dim=1)
