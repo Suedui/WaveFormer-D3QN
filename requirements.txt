@@ -1,5 +1,6 @@
 torch
 pywavelets
 matplotlib
+scipy
 numpy
 torchinfo
