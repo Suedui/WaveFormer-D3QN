@@ -18,11 +18,15 @@ from utils.train_utils import train_epoch
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+    default_dataset_root = Path(__file__).resolve().parent / "Datasets" / "CWRU"
     parser.add_argument(
         "--dataset-root",
         type=Path,
-        default=Path("C:/Users/刘明浩/PycharmProjects/WaveFormer-D3QN/Datasets/CWRU"),
-        help="Path to the directory containing signals.npy and targets.npy.",
+        default=default_dataset_root,
+        help=(
+            "Path to the directory containing signals.npy and targets.npy. "
+            "Defaults to the bundled CWRU dataset shipped with the project."
+        ),
     )
     parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--batch-size", type=int, default=32)
@@ -49,11 +53,14 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    dataset_root = args.dataset_root.expanduser().resolve()
+    log_dir = args.log_dir.expanduser()
+    checkpoint_path = args.checkpoint_path.expanduser()
     device = torch.device(args.device)
 
-    configure_logging(args.log_dir)
+    configure_logging(log_dir)
 
-    dataset_config = CWRUConfig(root=args.dataset_root)
+    dataset_config = CWRUConfig(root=dataset_root)
     dataset = CWRUDataset(dataset_config)
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
 
@@ -63,7 +70,10 @@ def main() -> None:
         base_config.wavelet_kernels,
         WaveletTransformConfig(level=base_config.wavelet_level),
     )
-    wavelet_dim = len(transform.apply(sample_signal, base_config.wavelet_kernels[0]))
+    wavelet_dim = max(
+        len(transform.apply(sample_signal, kernel))
+        for kernel in base_config.wavelet_kernels
+    )
 
     model_config = WaveFormerConfig(
         input_dim=wavelet_dim,
@@ -80,8 +90,9 @@ def main() -> None:
         loss = train_epoch(model, dataloader, optimizer, device)
         logging.info("Epoch %03d | Loss: %.6f", epoch, loss)
 
-    logging.info("Training complete. Saving checkpoint to %s", args.checkpoint_path)
-    torch.save(model.state_dict(), args.checkpoint_path)
+    logging.info("Training complete. Saving checkpoint to %s", checkpoint_path.resolve())
+    checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save(model.state_dict(), checkpoint_path)
 
 
 if __name__ == "__main__":

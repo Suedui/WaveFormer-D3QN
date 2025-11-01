@@ -7,6 +7,7 @@ from typing import Iterable, List
 
 import torch
 from torch import nn
+from torch.nn import functional as F
 
 from .BackboneTransformer import TransformerBackbone
 from .TFconvlayer import WaveletTransform, WaveletTransformConfig
@@ -69,11 +70,20 @@ class WaveFormerModel(nn.Module):
         """Forward pass through the backbone given a fixed kernel selection."""
 
         kernel = self.kernels[kernel_index]
-        features = [
-            torch.from_numpy(self.wavelet_transform.apply(sample.cpu().numpy(), kernel))
-            for sample in batch
-        ]
-        feature_tensor = torch.stack(features).unsqueeze(1).to(batch.device)
+        target_len = self.backbone.input_proj.in_features
+        processed_features: list[torch.Tensor] = []
+        for sample in batch:
+            feature = torch.from_numpy(
+                self.wavelet_transform.apply(sample.cpu().numpy(), kernel)
+            ).float()
+            numel = feature.numel()
+            if numel < target_len:
+                feature = F.pad(feature, (0, target_len - numel))
+            elif numel > target_len:
+                feature = feature[:target_len]
+            processed_features.append(feature)
+
+        feature_tensor = torch.stack(processed_features).unsqueeze(1).to(batch.device)
         return self.backbone(feature_tensor)
 
     def select_kernel(self, state: torch.Tensor) -> int:
