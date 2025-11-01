@@ -93,9 +93,9 @@ def parse_args() -> argparse.Namespace:
         help="Fraction of the dataset reserved for validation.",
     )
     parser.add_argument(
-        "--no-stratified-split",
+        "--stratified-split",
         action="store_true",
-        help="Disable stratified splitting and fall back to random_split.",
+        help="Enable stratified splitting; defaults to random_split when omitted.",
     )
     parser.add_argument(
         "--augment",
@@ -111,8 +111,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--gradient-clip",
         type=float,
-        default=1.0,
-        help="Gradient clipping norm applied during training (non-positive to disable).",
+        default=0.0,
+        help="Gradient clipping norm applied during training (set >0 to enable).",
     )
     parser.add_argument(
         "--lr-scheduler",
@@ -141,8 +141,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--early-stopping-patience",
         type=int,
-        default=10,
-        help="Number of epochs to wait for validation improvement before stopping.",
+        default=0,
+        help="Number of epochs to wait for validation improvement before stopping (0 to disable).",
     )
     parser.add_argument(
         "--early-stopping-min-delta",
@@ -215,16 +215,16 @@ def main() -> None:
         if val_size >= num_samples:
             val_size = num_samples - 1
         train_size = num_samples - val_size
-        if args.no_stratified_split:
+        if args.stratified_split:
+            logging.info("Using stratified split with validation ratio %.3f.", val_ratio)
+            train_dataset, val_dataset = _stratified_split(dataset, val_ratio, generator)
+        else:
             logging.info("Using random_split with validation ratio %.3f.", val_ratio)
             train_dataset, val_dataset = random_split(
                 dataset,
                 [train_size, val_size],
                 generator=generator,
             )
-        else:
-            logging.info("Using stratified split with validation ratio %.3f.", val_ratio)
-            train_dataset, val_dataset = _stratified_split(dataset, val_ratio, generator)
     else:
         train_dataset = dataset
         val_dataset = dataset
