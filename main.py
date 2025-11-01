@@ -35,31 +35,7 @@ def parse_args() -> argparse.Namespace:
         "--weight-decay",
         type=float,
         default=1e-4,
-        help="Weight decay used by the optimizer to regularize the model.",
-    )
-    parser.add_argument(
-        "--dropout",
-        type=float,
-        default=0.3,
-        help="Dropout rate applied inside the transformer backbone.",
-    )
-    parser.add_argument(
-        "--label-smoothing",
-        type=float,
-        default=0.05,
-        help="Label smoothing factor to stabilize classification training.",
-    )
-    parser.add_argument(
-        "--gradient-clip",
-        type=float,
-        default=1.0,
-        help="Gradient clipping norm to prevent exploding gradients.",
-    )
-    parser.add_argument(
-        "--augment-noise-std",
-        type=float,
-        default=0.01,
-        help="Std of Gaussian noise added to training signals for augmentation.",
+        help="Weight decay applied by the optimizer for L2 regularization.",
     )
     parser.add_argument(
         "--device",
@@ -127,7 +103,6 @@ def main() -> None:
         max_seq_len=1,
         wavelet_kernels=base_config.wavelet_kernels,
         wavelet_level=base_config.wavelet_level,
-        dropout=args.dropout,
     )
     model = WaveFormerModel(model_config, device=device).to(device)
 
@@ -145,15 +120,7 @@ def main() -> None:
     final_val_acc = 0.0
 
     for epoch in range(1, args.epochs + 1):
-        train_loss, train_acc = train_epoch(
-            model,
-            train_loader,
-            optimizer,
-            device,
-            gradient_clip=args.gradient_clip,
-            label_smoothing=args.label_smoothing,
-            augment_noise_std=args.augment_noise_std,
-        )
+        train_loss, train_acc = train_epoch(model, train_loader, optimizer, device)
         val_loss, val_acc = evaluate(model, val_loader, device)
 
         if train_acc >= best_train_acc:
