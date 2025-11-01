@@ -107,6 +107,8 @@ def _stratified_split_three_way(
     )
 
 
+
+
 def _parse_scale_bands(value: str) -> List[Tuple[float, float]]:
     bands: List[Tuple[float, float]] = []
     for item in value.split(","):
@@ -422,6 +424,7 @@ def main() -> None:
         model_dim=args.model_dim,
         output_dim=num_classes,
         max_seq_len=target_seq_len,
+        max_seq_len=signal_length,
         wavelet_scale_bands=scale_bands,
         wavelet_num_scales=num_scales,
         sampling_period=args.sampling_period,
