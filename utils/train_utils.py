@@ -29,19 +29,11 @@ def _prepare_class_labels(targets: torch.Tensor) -> torch.Tensor:
     return targets.view(-1).long()
 
 
-def compute_reward(
-    predictions: torch.Tensor,
-    targets: torch.Tensor,
-    label_smoothing: float = 0.0,
-) -> float:
+def compute_reward(predictions: torch.Tensor, targets: torch.Tensor) -> float:
     """Negative cross-entropy reward for guiding the D3QN agent."""
 
     labels = _prepare_class_labels(targets)
-    loss = nn.functional.cross_entropy(
-        predictions,
-        labels,
-        label_smoothing=label_smoothing,
-    )
+    loss = nn.functional.cross_entropy(predictions, labels)
     return float(-loss.item())
 
 
@@ -51,8 +43,6 @@ def train_epoch(
     optimizer: torch.optim.Optimizer,
     device: torch.device,
     gradient_clip: float | None = None,
-    label_smoothing: float = 0.0,
-    augment_noise_std: float = 0.0,
 ) -> Tuple[float, float]:
     """Train ``model`` for a single epoch and return loss/accuracy."""
 
@@ -63,10 +53,6 @@ def train_epoch(
 
     for signals, targets in dataloader:
         signals = signals.to(device)
-        if augment_noise_std > 0.0:
-            noise = torch.randn_like(signals) * augment_noise_std
-            signals = signals + noise
-
         targets = targets.to(device)
 
         labels = _prepare_class_labels(targets)
@@ -75,11 +61,7 @@ def train_epoch(
         kernel_idx = model.select_kernel(state)
 
         predictions = model(signals, kernel_idx)
-        loss = nn.functional.cross_entropy(
-            predictions,
-            labels,
-            label_smoothing=label_smoothing,
-        )
+        loss = nn.functional.cross_entropy(predictions, labels)
 
         optimizer.zero_grad()
         loss.backward()
@@ -87,11 +69,7 @@ def train_epoch(
             nn.utils.clip_grad_norm_(model.parameters(), gradient_clip)
         optimizer.step()
 
-        reward = compute_reward(
-            predictions.detach(),
-            targets,
-            label_smoothing=label_smoothing,
-        )
+        reward = compute_reward(predictions.detach(), targets)
         next_state = build_state_features(signals)
         model.agent.store_transition(state, kernel_idx, reward, next_state, False)
         model.agent.update()
