@@ -35,13 +35,25 @@ class CWRUDataset(TimeSeriesDataset):
         root = config.root
         signals, targets = load_cwru_numpy(root)
 
-        disk_config = DiskDatasetConfig(root=root)
-        super().__init__(
-            disk_config,
-            transform=transform,
-            target_transform=target_transform,
-            augmentations=self._build_augmentations(config, extra_augmentations),
-        )
+        augmentations = self._build_augmentations(config, extra_augmentations)
+
+        if root.is_file():
+            # When a single ``.mat`` file is provided ``TimeSeriesDataset`` cannot
+            # locate the cached ``signals.npy``/``targets.npy`` pair.  We handle
+            # this case manually while retaining the same attributes that the
+            # base class would normally populate.
+            self.config = DiskDatasetConfig(root=root.parent)
+            self.transform = transform
+            self.target_transform = target_transform
+            self.augmentations = augmentations
+        else:
+            disk_config = DiskDatasetConfig(root=root)
+            super().__init__(
+                disk_config,
+                transform=transform,
+                target_transform=target_transform,
+                augmentations=augmentations,
+            )
 
         # Replace the data loaded by the base class with the more efficient
         # tensors created from ``load_cwru_numpy`` to avoid double disk access.
