@@ -107,6 +107,8 @@ def _stratified_split_three_way(
     )
 
 
+
+
 def _parse_scale_bands(value: str) -> List[Tuple[float, float]]:
     bands: List[Tuple[float, float]] = []
     for item in value.split(","):
@@ -243,6 +245,15 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=512,
         help="Hidden dimensionality of the transformer encoder.",
+    )
+    parser.add_argument(
+        "--max-transformer-len",
+        type=int,
+        default=512,
+        help=(
+            "Maximum token length fed into the transformer. Sequences exceeding "
+            "this length are downsampled to fit the budget."
+        ),
     )
     parser.add_argument(
         "--wavelet-num-scales",
@@ -389,6 +400,21 @@ def main() -> None:
     sample_signal = dataset[0][0].numpy()
     signal_length = sample_signal.shape[-1]
 
+    max_transformer_len = max(1, args.max_transformer_len)
+    if max_transformer_len != args.max_transformer_len:
+        logging.warning(
+            "Maximum transformer length %d adjusted to %d to remain positive.",
+            args.max_transformer_len,
+            max_transformer_len,
+        )
+    target_seq_len = min(signal_length, max_transformer_len)
+    if target_seq_len < signal_length:
+        logging.info(
+            "Downsampling scalograms from %d to %d time steps before transformer encoding.",
+            signal_length,
+            target_seq_len,
+        )
+
     scale_bands = tuple(tuple(band) for band in args.wavelet_scale_bands)
 
     labels = _build_labels_tensor(dataset)
@@ -397,6 +423,7 @@ def main() -> None:
         input_dim=num_scales,
         model_dim=args.model_dim,
         output_dim=num_classes,
+        max_seq_len=target_seq_len,
         max_seq_len=signal_length,
         wavelet_scale_bands=scale_bands,
         wavelet_num_scales=num_scales,
