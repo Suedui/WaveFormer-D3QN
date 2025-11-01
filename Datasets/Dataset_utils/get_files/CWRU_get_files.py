@@ -22,9 +22,17 @@ def load_cwru_numpy(root: Path) -> Tuple[np.ndarray, np.ndarray]:
     available copies of the CWRU dataset, however, only contain the original
     MATLAB ``.mat`` files.  To improve usability we now transparently convert
     those files into the cached NumPy representation on first use.
+
+    When ``root`` points directly to a single ``.mat`` file we bypass the cache
+    generation and construct a one-sample dataset on the fly.  This is handy for
+    quick smoke tests without downloading the full dataset structure.
     """
 
     root = ensure_exists(root)
+
+    if root.is_file():
+        return _load_single_mat_file(root)
+
     signal_path = root / "signals.npy"
     target_path = root / "targets.npy"
 
@@ -137,3 +145,21 @@ def _stack_signals(signals: Iterable[np.ndarray], mat_files: list[Path]) -> np.n
         signals_list = [signal[:min_length] for signal in signals_list]
 
     return np.stack(signals_list, axis=0)
+
+
+def _load_single_mat_file(path: Path) -> Tuple[np.ndarray, np.ndarray]:
+    """Create a one-sample dataset from ``path`` when it points to a ``.mat`` file."""
+
+    if path.suffix.lower() not in MAT_SUFFIXES:
+        raise ValueError(
+            "Single-file loading only supports MATLAB '.mat' files; "
+            f"received '{path.suffix}'."
+        )
+
+    signal = _load_signal_from_mat(path)
+    signals_array = signal[np.newaxis, :]
+    # ``targets`` represent class indices; with a single sample we simply
+    # assign it to class ``0`` so that downstream classification heads remain
+    # well-defined.
+    targets_array = np.zeros((1,), dtype=np.int64)
+    return signals_array, targets_array
