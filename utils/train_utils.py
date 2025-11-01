@@ -21,11 +21,20 @@ def build_state_features(batch: torch.Tensor) -> torch.Tensor:
     return torch.tensor([mean, std, seq_len], dtype=torch.float32)
 
 
-def compute_reward(predictions: torch.Tensor, targets: torch.Tensor) -> float:
-    """Simple negative MSE reward used for guiding the D3QN agent."""
+def _prepare_class_labels(targets: torch.Tensor) -> torch.Tensor:
+    """Convert dataset targets to class indices expected by classification losses."""
 
-    mse = nn.functional.mse_loss(predictions, targets)
-    return float(-mse.item())
+    if targets.ndim > 1 and targets.size(-1) > 1:
+        return targets.argmax(dim=-1).long()
+    return targets.view(-1).long()
+
+
+def compute_reward(predictions: torch.Tensor, targets: torch.Tensor) -> float:
+    """Negative cross-entropy reward for guiding the D3QN agent."""
+
+    labels = _prepare_class_labels(targets)
+    loss = nn.functional.cross_entropy(predictions, labels)
+    return float(-loss.item())
 
 
 def train_epoch(
@@ -34,21 +43,25 @@ def train_epoch(
     optimizer: torch.optim.Optimizer,
     device: torch.device,
     gradient_clip: float | None = None,
-) -> float:
-    """Train ``model`` for a single epoch."""
+) -> Tuple[float, float]:
+    """Train ``model`` for a single epoch and return loss/accuracy."""
 
     model.train()
     total_loss = 0.0
+    total_correct = 0
+    total_samples = 0
 
     for signals, targets in dataloader:
         signals = signals.to(device)
         targets = targets.to(device)
 
+        labels = _prepare_class_labels(targets)
+
         state = build_state_features(signals)
         kernel_idx = model.select_kernel(state)
 
         predictions = model(signals, kernel_idx)
-        loss = nn.functional.mse_loss(predictions, targets)
+        loss = nn.functional.cross_entropy(predictions, labels)
 
         optimizer.zero_grad()
         loss.backward()
@@ -62,8 +75,47 @@ def train_epoch(
         model.agent.update()
 
         total_loss += float(loss.item()) * len(signals)
+        predictions_labels = predictions.argmax(dim=1)
+        total_correct += (predictions_labels == labels).sum().item()
+        total_samples += labels.numel()
 
-    return total_loss / len(dataloader.dataset)
+    epoch_loss = total_loss / len(dataloader.dataset)
+    accuracy = total_correct / total_samples if total_samples else 0.0
+    return epoch_loss, accuracy
+
+
+@torch.no_grad()
+def evaluate(
+    model: WaveFormerModel,
+    dataloader: DataLoader[Tuple[torch.Tensor, torch.Tensor]],
+    device: torch.device,
+) -> Tuple[float, float]:
+    """Evaluate ``model`` and return average loss and accuracy."""
+
+    model.eval()
+    total_loss = 0.0
+    total_correct = 0
+    total_samples = 0
+
+    for signals, targets in dataloader:
+        signals = signals.to(device)
+        targets = targets.to(device)
+
+        labels = _prepare_class_labels(targets)
+        state = build_state_features(signals)
+        kernel_idx = model.select_kernel(state)
+
+        predictions = model(signals, kernel_idx)
+        loss = nn.functional.cross_entropy(predictions, labels)
+
+        total_loss += float(loss.item()) * len(signals)
+        predicted_labels = predictions.argmax(dim=1)
+        total_correct += (predicted_labels == labels).sum().item()
+        total_samples += labels.numel()
+
+    avg_loss = total_loss / len(dataloader.dataset)
+    accuracy = total_correct / total_samples if total_samples else 0.0
+    return avg_loss, accuracy
 
 
 def save_checkpoint(model: nn.Module, path: Path) -> None:
